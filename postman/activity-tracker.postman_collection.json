@@ -1,0 +1,65 @@
+{
+  "info": {
+    "name": "Activity Tracker",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:3000" },
+    { "key": "org", "value": "your-org" },
+    { "key": "github_token", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{github_token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": { "method": "GET", "url": "{{base_url}}/health" }
+    },
+    {
+      "name": "Activity for a month",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/api/v1/orgs/{{org}}/activity?month=2026-09",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "orgs", "{{org}}", "activity"],
+          "query": [{ "key": "month", "value": "2026-09" }]
+        }
+      }
+    },
+    {
+      "name": "Activity for a range with commit stats",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/api/v1/orgs/{{org}}/activity?from=2026-09-01&to=2026-09-30&include_commit_stats=true&exclude_merges=true",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "orgs", "{{org}}", "activity"],
+          "query": [
+            { "key": "from", "value": "2026-09-01" },
+            { "key": "to", "value": "2026-09-30" },
+            { "key": "include_commit_stats", "value": "true" },
+            { "key": "exclude_merges", "value": "true" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Activity for another author",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/api/v1/orgs/{{org}}/activity?month=2026-09&author=octocat",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "orgs", "{{org}}", "activity"],
+          "query": [
+            { "key": "month", "value": "2026-09" },
+            { "key": "author", "value": "octocat" }
+          ]
+        }
+      }
+    }
+  ]
+}
