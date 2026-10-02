@@ -30,23 +30,7 @@ pub fn router(state: AppState) -> Router {
         .route("/health", get(health))
         .route("/api/v1/orgs/{org}/activity", get(activity))
         .with_state(state)
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(|request: &axum::http::Request<_>| {
-                    tracing::info_span!(
-                        "http_request",
-                        method = %request.method(),
-                        uri = %request.uri(),
-                        version = ?request.version(),
-                    )
-                })
-                .on_request(tower_http::trace::DefaultOnRequest::new().level(tracing::Level::INFO))
-                .on_response(
-                    tower_http::trace::DefaultOnResponse::new()
-                        .level(tracing::Level::INFO)
-                        .latency_unit(tower_http::LatencyUnit::Millis),
-                ),
-        )
+        .layer(TraceLayer::new_for_http())
 }
 
 async fn health() -> Json<Value> {
@@ -80,11 +64,7 @@ async fn activity(
     let (from, to) = resolve_period(&query, Utc::now().date_naive())?;
 
     let token = resolve_token(&headers, &state.config)?;
-    let api = GithubApi::new(
-        state.http.clone(),
-        state.config.github_api_url.clone(),
-        token,
-    );
+    let api = GithubApi::new(state.http.clone(), state.config.github_api_url.clone(), token);
 
     let report = build_report(
         &api,
@@ -154,9 +134,7 @@ fn resolve_period(
     };
 
     if from > to {
-        return Err(AppError::BadRequest(
-            "'from' must not be after 'to'".to_string(),
-        ));
+        return Err(AppError::BadRequest("'from' must not be after 'to'".to_string()));
     }
     if (to - from).num_days() > MAX_RANGE_DAYS {
         return Err(AppError::BadRequest(format!(
@@ -220,14 +198,8 @@ mod tests {
 
     #[test]
     fn rejects_mixed_and_reversed_ranges() {
-        assert!(
-            resolve_period(&query(Some("2026-09"), Some("2026-09-01"), None), today()).is_err()
-        );
-        assert!(resolve_period(
-            &query(None, Some("2026-09-30"), Some("2026-09-01")),
-            today()
-        )
-        .is_err());
+        assert!(resolve_period(&query(Some("2026-09"), Some("2026-09-01"), None), today()).is_err());
+        assert!(resolve_period(&query(None, Some("2026-09-30"), Some("2026-09-01")), today()).is_err());
     }
 
     #[test]

@@ -10,7 +10,16 @@ pub struct ActivityReport {
     pub period: Period,
     pub generated_at: DateTime<Utc>,
     pub summary: Summary,
+    pub meta: Meta,
     pub repositories: Vec<RepositoryActivity>,
+}
+
+/// Explains what was scanned, so an empty report is never a mystery.
+#[derive(Debug, Serialize)]
+pub struct Meta {
+    pub repositories_scanned: usize,
+    pub pull_requests_found: usize,
+    pub warnings: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]

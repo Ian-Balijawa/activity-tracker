@@ -8,7 +8,7 @@ use futures::{stream, StreamExt, TryStreamExt};
 use crate::error::AppError;
 use crate::github::{GhCommit, GhPullRequest, GhRepo, GithubApi, PullRequestRef};
 use crate::models::{
-    ActivityReport, CommitActivity, Period, PullRequestActivity, RepositoryActivity, Summary,
+    ActivityReport, CommitActivity, Meta, Period, PullRequestActivity, RepositoryActivity, Summary,
 };
 
 /// Maximum number of GitHub requests in flight at once.
@@ -40,6 +40,13 @@ pub async fn build_report(
         api.list_org_repos(&params.org, since),
         find_pull_requests(api, &params.org, &author, params.from, params.to),
     )?;
+
+    let repositories_scanned = repos.len();
+    let pull_requests_found = pull_request_refs.len();
+    tracing::info!(
+        org = %params.org, %author, repositories_scanned, pull_requests_found,
+        "discovery finished"
+    );
 
     // Commits per repository.
     let author_ref = &author;
@@ -164,6 +171,13 @@ pub async fn build_report(
     repositories.sort_by(|a, b| a.full_name.to_lowercase().cmp(&b.full_name.to_lowercase()));
 
     let summary = summarize(&repositories, params.include_commit_stats);
+    let warnings = build_warnings(
+        &params.org,
+        &author,
+        repositories_scanned,
+        pull_requests_found,
+        &summary,
+    );
 
     Ok(ActivityReport {
         organization: params.org,
@@ -174,8 +188,36 @@ pub async fn build_report(
         },
         generated_at: Utc::now(),
         summary,
+        meta: Meta {
+            repositories_scanned,
+            pull_requests_found,
+            warnings,
+        },
         repositories,
     })
+}
+
+fn build_warnings(
+    org: &str,
+    author: &str,
+    repositories_scanned: usize,
+    pull_requests_found: usize,
+    summary: &Summary,
+) -> Vec<String> {
+    let mut warnings = Vec::new();
+    if repositories_scanned == 0 && pull_requests_found == 0 {
+        warnings.push(format!(
+            "GitHub showed no repositories or pull requests in '{org}' for this token. \
+             A fine-grained token must list '{org}' as its resource owner and be approved by the org. \
+             Also check the org spelling and, for SAML orgs, authorize the token for SSO."
+        ));
+    } else if summary.commits == 0 && summary.pull_requests == 0 {
+        warnings.push(format!(
+            "Repositories were scanned but nothing matched author '{author}' in this period. \
+             Commits only match when the commit email is linked to that GitHub account."
+        ));
+    }
+    warnings
 }
 
 /// Finds PRs by the author that were created or merged inside the window.
@@ -206,13 +248,7 @@ fn to_commit(
     commit: GhCommit,
     stats: Option<&HashMap<String, crate::github::GhCommitStats>>,
 ) -> CommitActivity {
-    let title = commit
-        .commit
-        .message
-        .lines()
-        .next()
-        .unwrap_or("")
-        .to_string();
+    let title = commit.commit.message.lines().next().unwrap_or("").to_string();
     let line_stats = stats.and_then(|map| map.get(&commit.sha));
     CommitActivity {
         short_sha: commit.sha.chars().take(7).collect(),

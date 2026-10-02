@@ -19,16 +19,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("activity_tracker=debug,tower_http=debug")),
+                .unwrap_or_else(|_| EnvFilter::new("activity_tracker=debug,tower_http=info")),
         )
-        .with_target(false)
-        .with_thread_ids(false)
-        .with_thread_names(false)
-        .compact()
         .init();
 
     let config = Arc::new(Config::from_env());
-
     let state = AppState {
         http: github::build_http_client()?,
         config: Arc::clone(&config),
