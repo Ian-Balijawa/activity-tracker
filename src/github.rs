@@ -135,7 +135,7 @@ pub fn build_http_client() -> Result<Client, reqwest::Error> {
         HeaderValue::from_static("2022-11-28"),
     );
     Client::builder()
-        .user_agent("activity-tracker/0.1")
+        .user_agent("committer/0.1")
         .default_headers(headers)
         .timeout(Duration::from_secs(30))
         .build()
