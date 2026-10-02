@@ -24,7 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     let config = Arc::new(Config::from_env());
-    tracing::info!("Configuration: {:?}", config);   
+    tracing::info!("Configuration: {:#?}", config);   
      
     let state = AppState {
         http: github::build_http_client()?,
