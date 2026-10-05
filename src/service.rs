@@ -248,7 +248,13 @@ fn to_commit(
     commit: GhCommit,
     stats: Option<&HashMap<String, crate::github::GhCommitStats>>,
 ) -> CommitActivity {
-    let title = commit.commit.message.lines().next().unwrap_or("").to_string();
+    let title = commit
+        .commit
+        .message
+        .lines()
+        .next()
+        .unwrap_or("")
+        .to_string();
     let line_stats = stats.and_then(|map| map.get(&commit.sha));
     CommitActivity {
         short_sha: commit.sha.chars().take(7).collect(),

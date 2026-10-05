@@ -129,7 +129,10 @@ struct GhErrorBody {
 /// Builds the shared HTTP client with the headers GitHub expects.
 pub fn build_http_client() -> Result<Client, reqwest::Error> {
     let mut headers = HeaderMap::new();
-    headers.insert(ACCEPT, HeaderValue::from_static("application/vnd.github+json"));
+    headers.insert(
+        ACCEPT,
+        HeaderValue::from_static("application/vnd.github+json"),
+    );
     headers.insert(
         "x-github-api-version",
         HeaderValue::from_static("2022-11-28"),
@@ -238,7 +241,10 @@ impl GithubApi {
         repo_full_name: &str,
         number: u64,
     ) -> Result<GhPullRequest, AppError> {
-        let url = format!("{}/repos/{}/pulls/{}", self.base_url, repo_full_name, number);
+        let url = format!(
+            "{}/repos/{}/pulls/{}",
+            self.base_url, repo_full_name, number
+        );
         Ok(self.get(&url, &[]).await?.json().await?)
     }
 

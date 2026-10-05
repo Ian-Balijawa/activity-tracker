@@ -1,15 +1,13 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{Path, Query, State},
-    http::{header::AUTHORIZATION, HeaderMap},
-    routing::get,
-    Json, Router,
+    Json, Router, extract::{Path, Query, State}, http::{HeaderMap, HeaderName, HeaderValue, header::AUTHORIZATION}, routing::get,
 };
 use chrono::{Datelike, NaiveDate, Utc};
+use reqwest::{Method, header::CONTENT_TYPE};
 use serde::Deserialize;
 use serde_json::{json, Value};
-use tower_http::trace::TraceLayer;
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 use crate::config::Config;
 use crate::error::AppError;
@@ -26,11 +24,30 @@ pub struct AppState {
 }
 
 pub fn router(state: AppState) -> Router {
+    let cors = cors_layer(&state.config);
     Router::new()
         .route("/health", get(health))
         .route("/api/v1/orgs/{org}/activity", get(activity))
         .with_state(state)
+        .layer(cors)
         .layer(TraceLayer::new_for_http())
+}
+
+
+/// Lets the Angular app call this API from its own origin.
+fn cors_layer(config: &Config) -> CorsLayer {
+    let origin = reqwest::Url::parse(&config.frontend_url)
+        .ok()
+        .map(|url| url.origin().ascii_serialization())
+        .and_then(|origin| HeaderValue::from_str(&origin).ok());
+
+    let layer = CorsLayer::new()
+        .allow_methods([Method::GET])
+        .allow_headers([AUTHORIZATION, CONTENT_TYPE, HeaderName::from_static("x-github-token")]);
+    match origin {
+        Some(origin) => layer.allow_origin(origin),
+        None => layer,
+    }
 }
 
 async fn health() -> Json<Value> {
@@ -64,7 +81,11 @@ async fn activity(
     let (from, to) = resolve_period(&query, Utc::now().date_naive())?;
 
     let token = resolve_token(&headers, &state.config)?;
-    let api = GithubApi::new(state.http.clone(), state.config.github_api_url.clone(), token);
+    let api = GithubApi::new(
+        state.http.clone(),
+        state.config.github_api_url.clone(),
+        token,
+    );
 
     let report = build_report(
         &api,
@@ -134,7 +155,9 @@ fn resolve_period(
     };
 
     if from > to {
-        return Err(AppError::BadRequest("'from' must not be after 'to'".to_string()));
+        return Err(AppError::BadRequest(
+            "'from' must not be after 'to'".to_string(),
+        ));
     }
     if (to - from).num_days() > MAX_RANGE_DAYS {
         return Err(AppError::BadRequest(format!(
@@ -198,8 +221,14 @@ mod tests {
 
     #[test]
     fn rejects_mixed_and_reversed_ranges() {
-        assert!(resolve_period(&query(Some("2026-09"), Some("2026-09-01"), None), today()).is_err());
-        assert!(resolve_period(&query(None, Some("2026-09-30"), Some("2026-09-01")), today()).is_err());
+        assert!(
+            resolve_period(&query(Some("2026-09"), Some("2026-09-01"), None), today()).is_err()
+        );
+        assert!(resolve_period(
+            &query(None, Some("2026-09-30"), Some("2026-09-01")),
+            today()
+        )
+        .is_err());
     }
 
     #[test]

@@ -1,4 +1,4 @@
-use std::env;
+use std::{env};
 
 /// Runtime configuration, read from environment variables.
 #[derive(Debug, Clone)]
@@ -6,6 +6,7 @@ pub struct Config {
     pub port: u16,
     pub github_token: Option<String>,
     pub github_api_url: String,
+    pub frontend_url: String,
 }
 
 impl Config {
@@ -22,11 +23,17 @@ impl Config {
             .unwrap_or_else(|_| "https://api.github.com".to_string())
             .trim_end_matches('/')
             .to_string();
+        let frontend_url = env::var("FRONTEND_URL")
+            .unwrap_or_else(|_| "http://localhost:4200".to_string())
+            .trim_end_matches('/')
+            .to_string();
 
         Self {
             port,
             github_token,
             github_api_url,
+            frontend_url
         }
     }
 }
+ 
