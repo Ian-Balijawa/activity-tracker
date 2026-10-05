@@ -57,7 +57,7 @@ With no date parameters, it returns the current month so far. Ranges are capped 
 
 ## Postman
 
-Import `postman/committer.postman_collection.json`. Set the collection variables `github_token` and `org`.
+Import `postman/activity-tracker.postman_collection.json`. Set the collection variables `github_token` and `org`.
 
 ## Tests
 
